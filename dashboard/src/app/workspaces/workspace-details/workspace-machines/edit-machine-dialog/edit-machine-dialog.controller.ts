@@ -42,6 +42,7 @@ export class EditMachineDialogController {
   private usedMachinesNames: Array<string>;
   private environment: che.IWorkspaceEnvironment;
   private copyEnvironment: che.IWorkspaceEnvironment;
+  private originEnvironment: che.IWorkspaceEnvironment;
   private editorMode: string;
   private isEditorReadOnly: boolean;
 
@@ -65,7 +66,11 @@ export class EditMachineDialogController {
     this.cheRecipeService = cheRecipeService;
 
     this.isAdd = angular.isUndefined(this.machineName);
-    this.copyEnvironment = angular.copy(this.environment);
+
+    this.originEnvironment = angular.copy(this.environment);
+    this.deepFreeze(this.originEnvironment);
+
+    this.copyEnvironment = angular.copy(this.originEnvironment);
     if (!this.copyEnvironment) {
       return;
     }
@@ -198,6 +203,9 @@ export class EditMachineDialogController {
    * It will hide the dialog box.
    */
   cancel(): void {
+    if (angular.isFunction(this.onChange) && !angular.equals(this.environment, this.originEnvironment)) {
+      this.onChange(angular.copy(this.originEnvironment));
+    }
     this.$mdDialog.cancel();
   }
 
@@ -328,5 +336,21 @@ export class EditMachineDialogController {
       }
     });
     return pod;
+  }
+
+  /**
+   * Recursively freeze each property which is of type object.
+   * @param {Object} object
+   * @returns {Object}
+   */
+  private deepFreeze(object: Object): Object {
+    Object.getOwnPropertyNames(object).forEach((name: string) => {
+      if (name.startsWith('__')){
+        return;
+      }
+      let value = object[name];
+      object[name] = value && typeof value === 'object' ? this.deepFreeze(value) : value;
+    });
+    return Object.freeze(object);
   }
 }
